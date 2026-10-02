@@ -1,0 +1,30 @@
+# Virtual environments
+venv/
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Mac
+.DS_Store
+
+# Environment files
+.env
+
+# VS Code
+.*scode/
+
+# Jupyter
+.ipynb_checkpoin*s/
+
+# Generated files
+data/generat*d/
+data/synthetic/
+
+# Test cache
+.*ytest_cache/
+
+# Coverage
+.coverage*htmlcov/
