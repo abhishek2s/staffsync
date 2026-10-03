@@ -45,22 +45,11 @@ BEGIN
         status = VALUES(status),
         budget = VALUES(budget);
 
-    -- 3. Populate the date dimension for the review date range.
+    -- 3. Populate dates used by reviews. This avoids a recursive day-by-day
+    --    CTE, which can exceed MySQL's default recursive query depth.
     INSERT INTO dim_date (
         date_key, full_date, day_of_month, month_number, month_name,
         quarter_number, year_number, week_number, day_name
-    )
-    WITH RECURSIVE date_range AS (
-        SELECT
-            MIN(review_date) AS full_date,
-            MAX(review_date) AS max_date
-        FROM staffsync_silver.reviews
-        UNION ALL
-        SELECT
-            DATE_ADD(full_date, INTERVAL 1 DAY),
-            max_date
-        FROM date_range
-        WHERE full_date < max_date
     )
     SELECT
         CAST(DATE_FORMAT(full_date, '%Y%m%d') AS UNSIGNED),
@@ -72,7 +61,11 @@ BEGIN
         YEAR(full_date),
         WEEK(full_date, 3),
         DAYNAME(full_date)
-    FROM date_range
+    FROM (
+        SELECT DISTINCT review_date AS full_date
+        FROM staffsync_silver.reviews
+        WHERE review_date IS NOT NULL
+    ) review_dates
     WHERE full_date IS NOT NULL
     ON DUPLICATE KEY UPDATE
         day_of_month = VALUES(day_of_month),
