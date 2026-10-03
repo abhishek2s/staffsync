@@ -91,26 +91,35 @@ GROUP BY
 
 -- Project workload and review pressure indicators.
 CREATE VIEW vw_project_bottleneck AS
+WITH assignment_summary AS (
+    SELECT
+        project_id,
+        COUNT(DISTINCT employee_id) AS assigned_employee_count,
+        SUM(allocation_pct) AS total_allocation_pct
+    FROM staffsync_silver.assignments
+    GROUP BY project_id
+), review_summary AS (
+    SELECT
+        project_key,
+        COUNT(*) AS review_count,
+        ROUND(AVG(review_score), 2) AS average_review_score
+    FROM fact_performance_reviews
+    GROUP BY project_key
+)
 SELECT
     p.project_id,
     p.project_name,
     dept.department_name,
     p.status,
     p.budget,
-    COUNT(DISTINCT a.employee_id) AS assigned_employee_count,
-    COALESCE(SUM(a.allocation_pct), 0) AS total_allocation_pct,
-    COUNT(DISTINCT f.review_id) AS review_count,
-    ROUND(AVG(f.review_score), 2) AS average_review_score
+    COALESCE(a.assigned_employee_count, 0) AS assigned_employee_count,
+    COALESCE(a.total_allocation_pct, 0) AS total_allocation_pct,
+    COALESCE(r.review_count, 0) AS review_count,
+    r.average_review_score
 FROM dim_project p
 JOIN dim_department dept
     ON dept.department_key = p.department_key
-LEFT JOIN staffsync_silver.assignments a
+LEFT JOIN assignment_summary a
     ON a.project_id = p.project_id
-LEFT JOIN fact_performance_reviews f
-    ON f.project_key = p.project_key
-GROUP BY
-    p.project_id,
-    p.project_name,
-    dept.department_name,
-    p.status,
-    p.budget;
+LEFT JOIN review_summary r
+    ON r.project_key = p.project_key;
