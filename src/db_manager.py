@@ -1,12 +1,17 @@
-from __future__ import annotations
+"""
+db_manager.py  -  the ONLY place that talks to MySQL.
 
-import os
-from typing import Optional
+Two ideas used here:
+1. SINGLETON  : no matter how many times you write DatabaseManager(), you get the
+                SAME object back. This stops the app from opening hundreds of
+                connections.
+2. INHERITANCE: our Manager classes (EmployeeManager, ...) extend this class, so
+                they get read() / write() for free.
+"""
 from urllib.parse import quote_plus
 
+import pandas as pd
 from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
 
 from config.settings import settings
 from src.utils.logger import setup_logger
@@ -15,39 +20,52 @@ logger = setup_logger("DatabaseManager")
 
 
 class DatabaseManager:
-    _instance: Optional[DatabaseManager] = None
-    _engines: dict[str, Engine] = {}
+    # Schema names (bronze / silver / gold) come from your settings file
+    SILVER = settings.DB.SILVER_SCHEMA   # OLTP  - the app writes here
+    GOLD = settings.DB.GOLD_SCHEMA       # OLAP  - dashboards read from here
 
-    def __new__(cls) -> DatabaseManager:
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._initialize()
-        return cls._instance
+    _instances = {}   # remembers the one object created for each class
+    _engines = {}     # remembers one connection pool per schema
 
-    def _initialize(self) -> None:
-        self.host = settings.DB.HOST
-        self.port = settings.DB.PORT
-        self.user = settings.DB.USER
-        self.password = settings.DB.PASSWORD
+    # __new__ runs BEFORE __init__ and decides which object to hand back.
+    def __new__(cls):
+        if cls not in cls._instances:                       # first time?
+            cls._instances[cls] = super().__new__(cls)      # create it
+        return cls._instances[cls]                          # always return the same one
 
-    def get_engine(self, schema: str) -> Engine:
-        if schema not in self._engines:
-            url = (
-                f"mysql+pymysql://{quote_plus(self.user)}:{quote_plus(self.password)}"
-                f"@{self.host}:{self.port}/{schema}"
-            )
-            self._engines[schema] = create_engine(url, pool_pre_ping=True, pool_size=10, max_overflow=20)
-            logger.info(f"Initialized Database Engine for schema: `{schema}`")
-        return self._engines[schema]
+    def get_engine(self, schema):
+        """Create (once) and return the connection for a schema."""
+        if schema not in DatabaseManager._engines:
+            db = settings.DB
+            url = (f"mysql+pymysql://{quote_plus(db.USER)}:{quote_plus(db.PASSWORD)}"
+                   f"@{db.HOST}:{db.PORT}/{schema}")
+            DatabaseManager._engines[schema] = create_engine(
+                url, pool_pre_ping=True, pool_size=10, max_overflow=20)
+            logger.info(f"Connected to schema `{schema}`")
+        return DatabaseManager._engines[schema]
 
-    def execute_procedure(self, schema: str, procedure_name: str) -> None:
-        """Executes a stored procedure inside a specific database schema."""
-        engine = self.get_engine(schema)
-        logger.info(f"Executing stored procedure `{schema}.{procedure_name}()`...")
-        try:
-            with engine.begin() as conn:
-                conn.execute(text(f"CALL {procedure_name}();"))
-            logger.info(f"Successfully executed procedure `{schema}.{procedure_name}()`.")
-        except SQLAlchemyError as err:
-            logger.error(f"Error executing procedure `{procedure_name}`: {err}")
-            raise
+    def read(self, schema, sql, params=None):
+        """Run a SELECT and return a pandas DataFrame (great for Streamlit charts)."""
+        with self.get_engine(schema).connect() as conn:
+            return pd.read_sql(text(sql), conn, params=params or {})
+
+    def read_one(self, schema, sql, params=None):
+        """Run a SELECT and return the first row as a dict (or None if no rows)."""
+        with self.get_engine(schema).connect() as conn:
+            row = conn.execute(text(sql), params or {}).mappings().first()
+            return dict(row) if row else None
+
+    def write(self, schema, sql, params=None):
+        """Run INSERT / UPDATE / DELETE. Saved automatically; returns rows changed."""
+        with self.get_engine(schema).begin() as conn:   # begin() = auto commit
+            return conn.execute(text(sql), params or {}).rowcount
+
+    def execute_procedure(self, schema, procedure_name):
+        """Run a stored procedure, e.g. sp_scd2_update."""
+        with self.get_engine(schema).begin() as conn:
+            conn.execute(text(f"CALL {procedure_name}();"))
+        logger.info(f"Ran procedure {schema}.{procedure_name}()")
+
+
+# The project brief calls this class "DatabaseConnection", so keep both names.
+DatabaseConnection = DatabaseManager

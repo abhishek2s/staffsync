@@ -21,16 +21,16 @@ def run():
         # ---------------------------------------------------------------------
         # PHASE 1: BRONZE STAGING LAYER
         # ---------------------------------------------------------------------
-        logger.info("--- PHASE 1: BRONZE STAGING INGESTION ---")
+        # logger.info("--- PHASE 1: BRONZE STAGING INGESTION ---")
 
-        logger.info("Step 1.1: Running Data Synthesizer (Generating 5 CSVs)...")
-        synthesizer = DataSynthesizer()
-        shapes = synthesizer.run()
-        logger.info(f"Generated synthetic datasets: {list(shapes.keys())}")
+        # logger.info("Step 1.1: Running Data Synthesizer (Generating 5 CSVs)...")
+        # synthesizer = DataSynthesizer()
+        # shapes = synthesizer.run()
+        # logger.info(f"Generated synthetic datasets: {list(shapes.keys())}")
 
-        logger.info("Step 1.2: Loading CSVs into MySQL Bronze Staging Schema...")
-        loader = BronzeLoader()
-        loader.run()
+        # logger.info("Step 1.2: Loading CSVs into MySQL Bronze Staging Schema...")
+        # loader = BronzeLoader()
+        # loader.run()
 
         # ---------------------------------------------------------------------
         # PHASE 2: SILVER 3NF OLTP LAYER
