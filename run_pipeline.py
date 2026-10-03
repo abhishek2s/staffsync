@@ -18,19 +18,19 @@ logger = setup_logger("PipelineOrchestrator")
 def run():
     logger.info("Initializing StaffSync Data Engineering Pipeline...")
     try:
-        # # ---------------------------------------------------------------------
-        # # PHASE 1: BRONZE STAGING LAYER
-        # # ---------------------------------------------------------------------
-        # logger.info("--- PHASE 1: BRONZE STAGING INGESTION ---")
-        
-        # logger.info("Step 1.1: Running Data Synthesizer (Generating 5 CSVs)...")
-        # synthesizer = DataSynthesizer()
-        # shapes = synthesizer.run()
-        # logger.info(f"Generated synthetic datasets: {list(shapes.keys())}")
+        # ---------------------------------------------------------------------
+        # PHASE 1: BRONZE STAGING LAYER
+        # ---------------------------------------------------------------------
+        logger.info("--- PHASE 1: BRONZE STAGING INGESTION ---")
 
-        # logger.info("Step 1.2: Loading CSVs into MySQL Bronze Staging Schema...")
-        # loader = BronzeLoader()
-        # loader.run()
+        logger.info("Step 1.1: Running Data Synthesizer (Generating 5 CSVs)...")
+        synthesizer = DataSynthesizer()
+        shapes = synthesizer.run()
+        logger.info(f"Generated synthetic datasets: {list(shapes.keys())}")
+
+        logger.info("Step 1.2: Loading CSVs into MySQL Bronze Staging Schema...")
+        loader = BronzeLoader()
+        loader.run()
 
         # ---------------------------------------------------------------------
         # PHASE 2: SILVER 3NF OLTP LAYER
@@ -45,7 +45,17 @@ def run():
             procedure_name="sp_populate_oltp"
         )
 
-        logger.info("Pipeline execution completed successfully across Bronze and Silver layers!")
+        # ---------------------------------------------------------------------
+        # PHASE 3: GOLD DIMENSIONAL OLAP LAYER
+        # ---------------------------------------------------------------------
+        logger.info("--- PHASE 3: GOLD DIMENSIONAL OLAP TRANSFORMATION ---")
+        logger.info("Step 3.1: Executing `sp_populate_olap()` warehouse load...")
+        db_mgr.execute_procedure(
+            schema=settings.DB.GOLD_SCHEMA,
+            procedure_name="sp_populate_olap"
+        )
+
+        logger.info("Pipeline execution completed successfully across Bronze, Silver, and Gold layers!")
 
     except Exception as exc:
         logger.critical(f"Pipeline execution failed due to exception: {exc}", exc_info=True)

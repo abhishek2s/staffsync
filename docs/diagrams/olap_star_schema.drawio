@@ -1,0 +1,37 @@
+<mxfile host="app.diagrams.net" modified="2026-10-03T00:00:00.000Z" agent="StaffSync" version="24.7.17">
+  <diagram id="staffsync-olap-star" name="OLAP Star Schema">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="dim_employee" value="&lt;b&gt;dim_employee&lt;/b&gt;&lt;br&gt;employee_key (PK)&lt;br&gt;employee_id&lt;br&gt;department_key (FK)&lt;br&gt;job_role&lt;br&gt;job_level&lt;br&gt;monthly_income&lt;br&gt;start_date&lt;br&gt;end_date&lt;br&gt;is_current" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="80" width="250" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_project" value="&lt;b&gt;dim_project&lt;/b&gt;&lt;br&gt;project_key (PK)&lt;br&gt;project_id&lt;br&gt;department_key (FK)&lt;br&gt;project_name&lt;br&gt;status&lt;br&gt;budget" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="60" y="430" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="fact_reviews" value="&lt;b&gt;fact_performance_reviews&lt;/b&gt;&lt;br&gt;performance_review_key (PK)&lt;br&gt;review_id&lt;br&gt;employee_key (FK)&lt;br&gt;project_key (FK)&lt;br&gt;date_key (FK)&lt;br&gt;department_key (FK)&lt;br&gt;performance_rating&lt;br&gt;review_score&lt;br&gt;review_count" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="570" y="230" width="330" height="270" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_date" value="&lt;b&gt;dim_date&lt;/b&gt;&lt;br&gt;date_key (PK)&lt;br&gt;full_date&lt;br&gt;day_of_month&lt;br&gt;month_number&lt;br&gt;quarter_number&lt;br&gt;year_number" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="80" width="250" height="190" as="geometry" />
+        </mxCell>
+        <mxCell id="dim_department" value="&lt;b&gt;dim_department&lt;/b&gt;&lt;br&gt;department_key (PK)&lt;br&gt;department_id&lt;br&gt;department_name" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="1060" y="430" width="250" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_employee" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="dim_employee" target="fact_reviews">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_project" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="dim_project" target="fact_reviews">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_date" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="dim_date" target="fact_reviews">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_department" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;" edge="1" parent="1" source="dim_department" target="fact_reviews">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
