@@ -1,6 +1,7 @@
 """An Employee is just a bundle of data + a check that the data makes sense."""
 from dataclasses import asdict, dataclass
 from datetime import date
+import re
 from typing import Optional
 
 
@@ -32,8 +33,16 @@ class Employee:
         """Return an error message if something is wrong, otherwise None."""
         if not self.first_name.strip() or not self.last_name.strip():
             return "First name and last name are required."
-        if "@" not in self.email:
+        if not re.fullmatch(r"[A-Za-z]+(?:[ '-][A-Za-z]+)*", self.first_name.strip()):
+            return "First name must contain letters only."
+        if not re.fullmatch(r"[A-Za-z]+(?:[ '-][A-Za-z]+)*", self.last_name.strip()):
+            return "Last name must contain letters only."
+        if not re.fullmatch(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z]{2,})", self.email.strip()):
             return "Please enter a valid email address."
+        if not self.job_role.strip():
+            return "Job role is required."
+        if not re.fullmatch(r"[A-Za-z]+(?:[ '&/-][A-Za-z]+)*", self.job_role.strip()):
+            return "Job role must contain letters only."
         if not 18 <= self.age <= 70:
             return "Age must be between 18 and 70."
         if self.job_level not in (1, 2, 3, 4, 5):

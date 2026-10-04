@@ -1,4 +1,5 @@
 import sys
+import re
 from pathlib import Path
 import pandas as pd
 
@@ -25,19 +26,37 @@ dept_df = emp_mgr.get_departments()
 dept_names = {int(i): n for i, n in zip(dept_df["department_id"], dept_df["department_name"])} if not dept_df.empty else {}
 
 # Added an explicit key and a prompt to press Enter
-search = st.text_input("🔍 Search Employee Roster", placeholder="Type a name or email and press Enter...", key="dir_search_input")
+search = st.text_input(
+    "Search Employee Roster",
+    placeholder="Search employee by name or email",
+    key="dir_search_input",
+).strip()
 
 if search:
+    if not re.search(r"[A-Za-z@]", search):
+        st.info("Please search using an employee name or email address.")
+        st.stop()
+
     found = emp_mgr.list_employees(search=search, limit=10)
     
     if not found.empty:
         # found DataFrame contains department_name from the joined query
-        labels = {int(r.employee_id): f"{r.first_name} {r.last_name} - {r.department_name}" for r in found.itertuples()}
+        labels = {
+            int(r.employee_id): f"{r.first_name} {r.last_name} ({r.email})"
+            for r in found.itertuples()
+        }
         
         # Added an explicit key to the selectbox
-        selected_id = st.selectbox("Select Profile", list(labels.keys()), format_func=lambda i: labels[i], label_visibility="collapsed", key="dir_profile_select")
+        selected_id = st.selectbox(
+            "Select Profile",
+            list(labels.keys()),
+            format_func=lambda i: labels[i],
+            index=None,
+            placeholder="Select an employee from the search results",
+            key=f"dir_profile_select_{search}",
+        )
         
-        if selected_id:
+        if selected_id is not None:
             emp = emp_mgr.get_employee(selected_id)
             if emp:
                 dept_name = dept_names.get(emp['department_id'], "Unknown Department")

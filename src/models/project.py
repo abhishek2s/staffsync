@@ -1,5 +1,6 @@
 from dataclasses import asdict, dataclass
 from datetime import date
+import re
 from typing import Optional
 
 
@@ -19,8 +20,10 @@ class Project:
     def validate(self):
         if not self.project_name.strip():
             return "Project name is required."
-        if self.planned_end_date < self.start_date:
-            return "Planned end date cannot be before the start date."
+        if not re.fullmatch(r"(?=.*[A-Za-z])[A-Za-z0-9][A-Za-z0-9 '&/_().-]*", self.project_name.strip()):
+            return "Project name is invalid. Please include at least one letter."
+        if self.planned_end_date <= self.start_date:
+            return "Planned end date must be after the start date."
         if self.budget < 0:
             return "Budget cannot be negative."
         return None

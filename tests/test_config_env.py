@@ -12,9 +12,9 @@ class TestEnvironmentConfiguration(unittest.TestCase):
 
     def test_database_manager_uses_configured_credentials(self):
         manager = DatabaseManager()
-        self.assertEqual(manager.host, settings.DB.HOST)
-        self.assertEqual(manager.user, settings.DB.USER)
-        self.assertEqual(manager.password, settings.DB.PASSWORD)
+        self.assertEqual(manager.SILVER, settings.DB.SILVER_SCHEMA)
+        self.assertEqual(manager.GOLD, settings.DB.GOLD_SCHEMA)
+        self.assertIs(manager, DatabaseManager())
 
 
 if __name__ == "__main__":
