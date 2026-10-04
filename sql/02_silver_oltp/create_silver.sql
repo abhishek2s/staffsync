@@ -1,7 +1,7 @@
--- ============================================================================
 -- SILVER LAYER: 3NF Relational Operational Database (OLTP)
--- Database: staffsync_silver
--- ============================================================================
+
+SET SESSION sql_require_primary_key = 0;
+
 CREATE DATABASE IF NOT EXISTS staffsync_silver;
 USE staffsync_silver;
 

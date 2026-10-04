@@ -25,10 +25,13 @@ REQUIRED_COLUMNS = [
 
 
 def to_snake(name: str) -> str:
+    """Convert a PascalCase column name into snake_case."""
     return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
 class DataSynthesizer:
+    """Generate synthetic workforce, review, and project datasets."""
+
     def __init__(
         self,
         source_csv: str | None = None,

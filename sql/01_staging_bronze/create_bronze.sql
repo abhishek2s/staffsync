@@ -1,6 +1,5 @@
--- ============================================================================
--- BRONZE LAYER: Raw Staging Database DDL
--- ============================================================================
+SET SESSION sql_require_primary_key = 0;
+
 CREATE DATABASE IF NOT EXISTS staffsync_bronze;
 USE staffsync_bronze;
 

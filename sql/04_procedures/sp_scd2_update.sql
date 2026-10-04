@@ -1,6 +1,5 @@
--- ============================================================================
 -- STORED PROCEDURE: Bronze history + Silver current state -> Gold SCD Type 2
--- ============================================================================
+
 USE staffsync_gold;
 
 DELIMITER $$

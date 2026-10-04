@@ -1,6 +1,5 @@
--- ============================================================================
 -- STORED PROCEDURE: Silver + Bronze -> Gold dimensional warehouse
--- ============================================================================
+
 USE staffsync_gold;
 
 DELIMITER $$
@@ -9,6 +8,7 @@ DROP PROCEDURE IF EXISTS sp_populate_olap$$
 
 CREATE PROCEDURE sp_populate_olap()
 BEGIN
+    SET SESSION sql_require_primary_key = 0;
     -- The fact table is rebuilt from the current Silver review transaction set.
     DELETE FROM fact_performance_reviews;
 
