@@ -5,3 +5,5 @@ mysql-connector-python>=8.0.0
 sqlalchemy>=2.0.0
 pymysql>=1.0.0
 python-dotenv>=1.0.0
+streamlit>=1.49.0
+plotly>=5.18.0
