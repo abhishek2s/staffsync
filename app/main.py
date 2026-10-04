@@ -10,7 +10,7 @@ import streamlit as st
 from src.utils.ui_helpers import get_data, setup_page
 
 # Setup page
-setup_page("Home", "🏠")
+setup_page("Home")
 
 # --- CSS for Premium Dark Mode Cards ---
 st.markdown("""

@@ -2,7 +2,7 @@ import streamlit as st
 from src.dal.analytics_manager import AnalyticsManager
 from src.dal.employee_manager import EmployeeManager
 
-def setup_page(title, icon):
+def setup_page(title):
     st.set_page_config(page_title=f"StaffSync | {title}", layout="wide")
     
     with st.sidebar:

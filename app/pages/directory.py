@@ -11,7 +11,7 @@ from src.utils.ui_helpers import setup_page
 from src.dal.employee_manager import EmployeeManager
 from src.dal.analytics_manager import AnalyticsManager
 
-setup_page("Directory", "📇")
+setup_page("Directory")
 
 st.title("Staff Directory & Profile")
 st.write("Search the active roster and view complete SCD Type 2 career histories.")

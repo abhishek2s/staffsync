@@ -16,7 +16,7 @@ from src.models.project import Project
 from src.models.review import Review
 from src.utils.ui_helpers import load_departments, setup_page, show_result
 
-setup_page("Data Entry", "")
+setup_page("Data Entry")
 st.title("Data Entry")
 
 employees = EmployeeManager()

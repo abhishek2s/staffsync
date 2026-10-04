@@ -11,7 +11,7 @@ import plotly.express as px
 import streamlit as st
 from src.utils.ui_helpers import get_data, setup_page
 
-setup_page("Analytics", "")
+setup_page("Analytics")
 st.title("Analytics Dashboard")
 
 kpis = get_data("get_kpis")
@@ -88,7 +88,6 @@ with tab_top:
             fig = px.bar(top, x="average_review_score", y="employee_name", color="department_name", orientation="h", hover_data=["department_rank"], title=f"Top {top_n} employees per department in {year}")
             fig.update_layout(yaxis={"categoryorder": "total ascending"})
             st.plotly_chart(fig)
-            st.caption("Ranks use SQL DENSE_RANK(), so tied employees share a rank.")
             st.dataframe(top, hide_index=True)
 
 # TAB 3: ATTRITION
