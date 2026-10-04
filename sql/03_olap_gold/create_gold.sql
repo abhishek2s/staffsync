@@ -1,7 +1,5 @@
--- ============================================================================
 -- GOLD LAYER: Dimensional OLAP Data Warehouse
--- Database: staffsync_gold
--- ============================================================================
+
 CREATE DATABASE IF NOT EXISTS staffsync_gold;
 USE staffsync_gold;
 

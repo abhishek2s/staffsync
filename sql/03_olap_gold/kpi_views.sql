@@ -1,6 +1,5 @@
--- ============================================================================
 -- GOLD LAYER: Analytical KPI Views
--- ============================================================================
+
 USE staffsync_gold;
 
 DROP VIEW IF EXISTS vw_project_bottleneck;

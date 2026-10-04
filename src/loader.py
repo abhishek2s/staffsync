@@ -74,6 +74,12 @@ class BronzeLoader:
 
     def run(self) -> None:
         engine = self._engine()
+
+        # --- ADDED FOR AIVEN COMPATIBILITY ---
+        logger.info("Disabling sql_require_primary_key for Aiven session...")
+        with engine.begin() as conn:
+            conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
+
         for table in DATE_COLUMNS:
             self.load_table(engine, table)
         logger.info("All 5 staging tables loaded fresh into MySQL Bronze Database.")

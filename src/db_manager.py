@@ -1,13 +1,3 @@
-"""
-db_manager.py  -  the ONLY place that talks to MySQL.
-
-Two ideas used here:
-1. SINGLETON  : no matter how many times you write DatabaseManager(), you get the
-                SAME object back. This stops the app from opening hundreds of
-                connections.
-2. INHERITANCE: our Manager classes (EmployeeManager, ...) extend this class, so
-                they get read() / write() for free.
-"""
 from urllib.parse import quote_plus
 
 import pandas as pd
@@ -56,15 +46,20 @@ class DatabaseManager:
             return dict(row) if row else None
 
     def write(self, schema, sql, params=None):
-        """Run INSERT / UPDATE / DELETE. Saved automatically; returns rows changed."""
+        """Run INSERT / UPDATE / DELETE with primary key requirement disabled for the session."""
         with self.get_engine(schema).begin() as conn:   # begin() = auto commit
+            conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
             return conn.execute(text(sql), params or {}).rowcount
 
     def execute_procedure(self, schema, procedure_name):
-        """Run a stored procedure, e.g. sp_scd2_update."""
+        """Executes a stored procedure with Aiven PK requirement disabled."""
+        logger.info(f"Executing procedure `{schema}.{procedure_name}`...")
         with self.get_engine(schema).begin() as conn:
+            # Disable primary key requirement for this execution session
+            conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
+            # Call the stored procedure
             conn.execute(text(f"CALL {procedure_name}();"))
-        logger.info(f"Ran procedure {schema}.{procedure_name}()")
+        logger.info(f"Procedure `{schema}.{procedure_name}` executed successfully.")
 
 
 # The project brief calls this class "DatabaseConnection", so keep both names.

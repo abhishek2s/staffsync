@@ -1,7 +1,6 @@
--- ============================================================================
 -- STORED PROCEDURE: Bronze (Staging) -> Silver (3NF OLTP)
 -- Handles cleaning, deduplication, casing normalization, and FK population
--- ============================================================================
+
 USE staffsync_silver;
 
 DELIMITER $$
