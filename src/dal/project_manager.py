@@ -9,13 +9,43 @@ from src.models.project import Project
 
 class ProjectManager(DatabaseManager):
 
-    def list_projects(self, limit=200):
+    def list_projects(self, search=None, employee_id=None, limit=200):
+        pattern = f"%{search}%" if search and not str(search).isdigit() else None
+        project_id = int(search) if search and str(search).isdigit() else None
         return self.read(self.SILVER, """
             SELECT p.project_id, p.project_name, d.department_name, p.start_date,
                    p.planned_end_date, p.status, p.budget
             FROM projects p JOIN departments d ON d.department_id = p.department_id
+            WHERE (:pattern IS NULL OR p.project_name LIKE :pattern)
+              AND (:project_id IS NULL OR p.project_id = :project_id)
+              AND (
+                  :employee_id IS NULL
+                  OR EXISTS (
+                      SELECT 1
+                      FROM assignments a
+                      WHERE a.project_id = p.project_id
+                        AND a.employee_id = :employee_id
+                  )
+              )
             ORDER BY p.project_id DESC LIMIT :limit
-        """, {"limit": int(limit)})
+        """, {
+            "pattern": pattern,
+            "project_id": project_id,
+            "employee_id": employee_id,
+            "limit": int(limit),
+        })
+
+    def list_employee_projects(self, employee_id, limit=200):
+        return self.read(self.SILVER, """
+            SELECT DISTINCT p.project_id, p.project_name, d.department_name,
+                            p.start_date, p.planned_end_date, p.status, p.budget
+            FROM projects p
+            JOIN departments d ON d.department_id = p.department_id
+            JOIN assignments a ON a.project_id = p.project_id
+            WHERE a.employee_id = :employee_id
+            ORDER BY p.project_id DESC
+            LIMIT :limit
+        """, {"employee_id": int(employee_id), "limit": int(limit)})
 
     def add_project(self, project: Project):
         error = project.validate()
