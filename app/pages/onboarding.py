@@ -257,10 +257,11 @@ with tab_new:
                 update_field_state(key)
             for key in NUMBER_RULES:
                 update_field_state(key)
-            field_errors = [
-                message for key, (_, message) in {**FIELD_RULES, **NUMBER_RULES}.items()
-                if st.session_state.get(f"{key}_invalid", False)
-            ]
+           field_errors = [
+                rule[1] if key in FIELD_RULES else rule[2]
+                for key, rule in {**FIELD_RULES, **NUMBER_RULES}.items()
+                if st.session_state.get(f"{key}_invalid", False)
+            ]
             if field_errors:
                 for message in field_errors:
                     st.error(message)
