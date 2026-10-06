@@ -14,10 +14,10 @@ load_dotenv(BASE_DIR / "config" / ".env")
 class DatabaseConfig:
     """MySQL connection settings for each medallion layer."""
 
-    HOST: str = os.getenv("DB_HOST", "staffsync-mysql-recreateworld7-82d9.b.aivencloud.com")
-    PORT: int = int(os.getenv("DB_PORT", 28055))
-    USER: str = os.getenv("DB_USER", "avnadmin")
-    PASSWORD: str = os.getenv("DB_PASSWORD", "")
+    HOST: str = os.environ["DB_HOST"]
+    PORT: int = int(os.environ["DB_PORT"])
+    USER: str = os.environ["DB_USER"]
+    PASSWORD: str = os.environ["DB_PASSWORD"]
     BRONZE_SCHEMA: str = os.getenv("DB_NAME_BRONZE", "staffsync_bronze")
     SILVER_SCHEMA: str = os.getenv("DB_NAME_SILVER", "staffsync_silver")
     GOLD_SCHEMA: str = os.getenv("DB_NAME_GOLD", "staffsync_gold")
