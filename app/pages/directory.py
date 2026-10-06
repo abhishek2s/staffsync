@@ -86,7 +86,6 @@ if search:
                     
                     st.dataframe(
                         history_df[["department_name", "job_role", "job_level", "monthly_income", "start_date", "end_date"]], 
-                        use_container_width=True, 
                         hide_index=True
                     )
                 else:

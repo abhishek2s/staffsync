@@ -19,13 +19,13 @@ class ProjectManager(DatabaseManager):
             WHERE (:pattern IS NULL OR p.project_name LIKE :pattern)
               AND (:project_id IS NULL OR p.project_id = :project_id)
               AND (
-                  :employee_id IS NULL
-                  OR EXISTS (
-                      SELECT 1
-                      FROM assignments a
-                      WHERE a.project_id = p.project_id
-                        AND a.employee_id = :employee_id
-                  )
+                    :employee_id IS NULL
+                    OR EXISTS (
+                        SELECT 1
+                        FROM assignments a
+                        WHERE a.project_id = p.project_id
+                          AND a.employee_id = :employee_id
+                    )
               )
             ORDER BY p.project_id DESC LIMIT :limit
         """, {
@@ -38,7 +38,7 @@ class ProjectManager(DatabaseManager):
     def list_employee_projects(self, employee_id, limit=200):
         return self.read(self.SILVER, """
             SELECT DISTINCT p.project_id, p.project_name, d.department_name,
-                            p.start_date, p.planned_end_date, p.status, p.budget
+                   p.start_date, p.planned_end_date, p.status, p.budget
             FROM projects p
             JOIN departments d ON d.department_id = p.department_id
             JOIN assignments a ON a.project_id = p.project_id
@@ -52,14 +52,19 @@ class ProjectManager(DatabaseManager):
         if error:
             return False, error
         try:
-            row = self.read_one(self.SILVER, "SELECT COALESCE(MAX(project_id), 0) + 1 AS next_id FROM projects")
-            project.project_id = int(row["next_id"])
-            self.write(self.SILVER, """
-                INSERT INTO projects (project_id, project_name, department_id, start_date,
-                                      planned_end_date, status, budget)
-                VALUES (:project_id, :project_name, :department_id, :start_date,
-                        :planned_end_date, :status, :budget)
-            """, project.to_dict())
+            # ONE transaction: next id + insert are saved together (or not at all)
+            with self.transaction(self.SILVER) as conn:
+                row = self.read_one(
+                    self.SILVER,
+                    "SELECT COALESCE(MAX(project_id), 0) + 1 AS next_id FROM projects FOR UPDATE",
+                    conn=conn)
+                project.project_id = int(row["next_id"])
+                self.write(self.SILVER, """
+                    INSERT INTO projects (project_id, project_name, department_id, start_date,
+                                          planned_end_date, status, budget)
+                    VALUES (:project_id, :project_name, :department_id, :start_date,
+                            :planned_end_date, :status, :budget)
+                """, project.to_dict(), conn=conn)
             return True, (f"Project {project.project_id} created. "
                           "Click 'Refresh warehouse' to see it in the dashboards.")
         except IntegrityError:
@@ -74,25 +79,34 @@ class ProjectManager(DatabaseManager):
         if not 1 <= allocation_pct <= 100:
             return False, "Allocation must be between 1 and 100."
         try:
-            already = self.read_one(self.SILVER,
-                "SELECT 1 AS found FROM assignments WHERE employee_id = :e AND project_id = :p",
-                {"e": employee_id, "p": project_id})
-            if already:
-                return False, "This employee is already on this project."
+            # ONE transaction: the checks and the insert can no longer be separated by
+            with self.transaction(self.SILVER) as conn:
+                already = self.read_one(
+                    self.SILVER,
+                    "SELECT 1 AS found FROM assignments WHERE employee_id = :e AND project_id = :p",
+                    {"e": employee_id, "p": project_id}, conn=conn)
+                if already:
+                    return False, "This employee is already on this project."
 
-            used = self.read_one(self.SILVER,
-                "SELECT COALESCE(SUM(allocation_pct), 0) AS used FROM assignments WHERE employee_id = :e",
-                {"e": employee_id})["used"]
-            if int(used) + allocation_pct > 100:
-                return False, f"Employee already has {int(used)}% allocated. Adding {allocation_pct}% goes over 100%."
+                used = self.read_one(
+                    self.SILVER,
+                    "SELECT COALESCE(SUM(allocation_pct), 0) AS used FROM assignments "
+                    "WHERE employee_id = :e FOR UPDATE",
+                    {"e": employee_id}, conn=conn)["used"]
+                if int(used) + allocation_pct > 100:
+                    return False, f"Employee already has {int(used)}% allocated. Adding {allocation_pct}% goes over 100%."
 
-            row = self.read_one(self.SILVER, "SELECT COALESCE(MAX(assignment_id), 0) + 1 AS next_id FROM assignments")
-            self.write(self.SILVER, """
-                INSERT INTO assignments (assignment_id, employee_id, project_id, assigned_date,
-                                         role_on_project, allocation_pct)
-                VALUES (:id, :e, :p, :d, :r, :a)
-            """, {"id": int(row["next_id"]), "e": employee_id, "p": project_id,
-                  "d": date.today(), "r": role_on_project.strip(), "a": allocation_pct})
+                row = self.read_one(
+                    self.SILVER,
+                    "SELECT COALESCE(MAX(assignment_id), 0) + 1 AS next_id FROM assignments FOR UPDATE",
+                    conn=conn)
+                self.write(self.SILVER, """
+                    INSERT INTO assignments (assignment_id, employee_id, project_id, assigned_date,
+                                             role_on_project, allocation_pct)
+                    VALUES (:id, :e, :p, :d, :r, :a)
+                """, {"id": int(row["next_id"]), "e": employee_id, "p": project_id,
+                      "d": date.today(), "r": role_on_project.strip(), "a": allocation_pct},
+                    conn=conn)
             return True, "Employee assigned to project."
         except IntegrityError:
             return False, "Employee id or project id does not exist."

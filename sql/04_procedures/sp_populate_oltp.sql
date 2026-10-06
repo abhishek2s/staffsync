@@ -9,6 +9,7 @@ DROP PROCEDURE IF EXISTS sp_populate_oltp$$
 
 CREATE PROCEDURE sp_populate_oltp()
 BEGIN
+    SET SESSION sql_require_primary_key = 0;
     -- Disable foreign key checks for clean bulk truncation/population
     SET FOREIGN_KEY_CHECKS = 0;
     TRUNCATE TABLE reviews;

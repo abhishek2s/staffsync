@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+from time import perf_counter
 from urllib.parse import quote_plus
 
 import pandas as pd
@@ -10,21 +12,21 @@ logger = setup_logger("DatabaseManager")
 
 
 class DatabaseManager:
-    # Schema names (bronze / silver / gold) come from your settings file
-    SILVER = settings.DB.SILVER_SCHEMA   # OLTP  - the app writes here
-    GOLD = settings.DB.GOLD_SCHEMA       # OLAP  - dashboards read from here
+    SILVER = settings.DB.SILVER_SCHEMA   # OLTP
+    GOLD = settings.DB.GOLD_SCHEMA       # OLAP
 
-    _instances = {}   # remembers the one object created for each class
-    _engines = {}     # remembers one connection pool per schema
+    RELAX_PRIMARY_KEY_RULE = True
 
-    # __new__ runs BEFORE __init__ and decides which object to hand back.
+    _instances = {}
+    _engines = {}
+
     def __new__(cls):
-        if cls not in cls._instances:                       # first time?
-            cls._instances[cls] = super().__new__(cls)      # create it
-        return cls._instances[cls]                          # always return the same one
+        if cls not in cls._instances:
+            cls._instances[cls] = super().__new__(cls)
+        return cls._instances[cls]
 
     def get_engine(self, schema):
-        """Create (once) and return the connection for a schema."""
+        """Create (once) and return the connection pool for a schema."""
         if schema not in DatabaseManager._engines:
             db = settings.DB
             url = (f"mysql+pymysql://{quote_plus(db.USER)}:{quote_plus(db.PASSWORD)}"
@@ -34,33 +36,62 @@ class DatabaseManager:
             logger.info(f"Connected to schema `{schema}`")
         return DatabaseManager._engines[schema]
 
-    def read(self, schema, sql, params=None):
-        """Run a SELECT and return a pandas DataFrame (great for Streamlit charts)."""
-        with self.get_engine(schema).connect() as conn:
-            return pd.read_sql(text(sql), conn, params=params or {})
 
-    def read_one(self, schema, sql, params=None):
-        """Run a SELECT and return the first row as a dict (or None if no rows)."""
+    @contextmanager
+    def connection(self, schema):
+        """Borrow a connection for READING."""
         with self.get_engine(schema).connect() as conn:
+            yield conn
+
+    @contextmanager
+    def transaction(self, schema):
+        """Borrow a connection for WRITING under ONE transaction."""
+        with self.get_engine(schema).begin() as conn:
+            if self.RELAX_PRIMARY_KEY_RULE:
+                conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
+            yield conn
+
+    @contextmanager
+    def operation(self, label):
+        """Log operation lifecycle and timing."""
+        started = perf_counter()
+        logger.info(f"{label} - started")
+        try:
+            yield
+        except Exception as err:
+            logger.error(f"{label} - FAILED after {perf_counter() - started:.2f}s: {err}")
+            raise
+        logger.info(f"{label} - done in {perf_counter() - started:.2f}s")
+
+
+    def read(self, schema, sql, params=None, conn=None):
+        """Run a SELECT and return a pandas DataFrame."""
+        if conn is not None:
+            return pd.read_sql(text(sql), conn, params=params or {})
+        with self.get_engine(schema).connect() as connection:
+            return pd.read_sql(text(sql), connection, params=params or {})
+
+    def read_one(self, schema, sql, params=None, conn=None):
+        """Run a SELECT and return the first row as a dict."""
+        if conn is not None:
             row = conn.execute(text(sql), params or {}).mappings().first()
             return dict(row) if row else None
+        with self.get_engine(schema).connect() as connection:
+            row = connection.execute(text(sql), params or {}).mappings().first()
+            return dict(row) if row else None
 
-    def write(self, schema, sql, params=None):
-        """Run INSERT / UPDATE / DELETE with primary key requirement disabled for the session."""
-        with self.get_engine(schema).begin() as conn:   # begin() = auto commit
-            conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
+    def write(self, schema, sql, params=None, conn=None):
+        """Run INSERT / UPDATE / DELETE."""
+        if conn is not None:
             return conn.execute(text(sql), params or {}).rowcount
+        with self.transaction(schema) as new_conn:
+            return new_conn.execute(text(sql), params or {}).rowcount
 
     def execute_procedure(self, schema, procedure_name):
-        """Executes a stored procedure with Aiven PK requirement disabled."""
-        logger.info(f"Executing procedure `{schema}.{procedure_name}`...")
-        with self.get_engine(schema).begin() as conn:
-            # Disable primary key requirement for this execution session
-            conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
-            # Call the stored procedure
-            conn.execute(text(f"CALL {procedure_name}();"))
-        logger.info(f"Procedure `{schema}.{procedure_name}` executed successfully.")
+        """Executes a stored procedure."""
+        with self.operation(f"procedure {schema}.{procedure_name}()"):
+            with self.transaction(schema) as conn:
+                conn.execute(text(f"CALL {procedure_name}();"))
 
 
-# The project brief calls this class "DatabaseConnection", so keep both names.
 DatabaseConnection = DatabaseManager

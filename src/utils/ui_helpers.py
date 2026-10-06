@@ -29,7 +29,7 @@ def setup_page(title):
         st.write("") 
         
         # The 'primary' type automatically pulls the coral-red from Streamlit's default dark theme
-        if st.button("Refresh Data", type="primary", use_container_width=True):
+        if st.button("Refresh Data", type="primary", width="stretch"):
             with st.spinner("Rebuilding the warehouse..."):
                 ok, message = AnalyticsManager().refresh_warehouse()
                 show_result(ok, message)

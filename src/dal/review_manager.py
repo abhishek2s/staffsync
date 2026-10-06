@@ -12,16 +12,21 @@ class ReviewManager(DatabaseManager):
         if error:
             return False, error
         try:
-            row = self.read_one(self.SILVER, "SELECT COALESCE(MAX(review_id), 0) + 1 AS next_id FROM reviews")
-            review.review_id = int(row["next_id"])
-            self.write(self.SILVER, """
-                INSERT INTO reviews (review_id, employee_id, project_id, review_date,
-                    performance_rating, review_score, job_satisfaction, work_life_balance,
-                    environment_satisfaction)
-                VALUES (:review_id, :employee_id, :project_id, :review_date,
-                    :performance_rating, :review_score, :job_satisfaction, :work_life_balance,
-                    :environment_satisfaction)
-            """, review.to_dict())
+            # ONE transaction: next id + insert are saved together (or not at all)
+            with self.transaction(self.SILVER) as conn:
+                row = self.read_one(
+                    self.SILVER,
+                    "SELECT COALESCE(MAX(review_id), 0) + 1 AS next_id FROM reviews FOR UPDATE",
+                    conn=conn)
+                review.review_id = int(row["next_id"])
+                self.write(self.SILVER, """
+                    INSERT INTO reviews (review_id, employee_id, project_id, review_date,
+                        performance_rating, review_score, job_satisfaction, work_life_balance,
+                        environment_satisfaction)
+                    VALUES (:review_id, :employee_id, :project_id, :review_date,
+                        :performance_rating, :review_score, :job_satisfaction, :work_life_balance,
+                        :environment_satisfaction)
+                """, review.to_dict(), conn=conn)
             return True, (f"Review {review.review_id} saved. "
                           "Click 'Refresh warehouse' to see it in the dashboards.")
         except IntegrityError:

@@ -12,7 +12,7 @@ from src.db_manager import DatabaseManager
 from src.models.employee import Employee
 
 
-class EmployeeManager(DatabaseManager):      # inherits read() / write() / SILVER / GOLD
+class EmployeeManager(DatabaseManager):
 
     # ---------- READ ----------
     def get_departments(self):
@@ -45,23 +45,25 @@ class EmployeeManager(DatabaseManager):      # inherits read() / write() / SILVE
         if error:
             return False, error
         try:
-            # Silver ids are not auto-numbered, so we take (highest id + 1)
-            row = self.read_one(self.SILVER, "SELECT COALESCE(MAX(employee_id), 0) + 1 AS next_id FROM employees")
-            emp.employee_id = int(row["next_id"])
-            self.write(self.SILVER, """
-                INSERT INTO employees (employee_id, first_name, last_name, email, department_id,
-                    job_role, job_level, hire_date, effective_from, age, gender,
-                    marital_status, monthly_income, attrition)
-                VALUES (:employee_id, :first_name, :last_name, :email, :department_id,
-                    :job_role, :job_level, :hire_date, :effective_from, :age, :gender,
-                    :marital_status, :monthly_income, :attrition)
-            """, emp.to_dict())
+            with self.transaction(self.SILVER) as conn:
+                row = self.read_one(
+                    self.SILVER,
+                    "SELECT COALESCE(MAX(employee_id), 0) + 1 AS next_id FROM employees FOR UPDATE",
+                    conn=conn)
+                emp.employee_id = int(row["next_id"])
+                self.write(self.SILVER, """
+                    INSERT INTO employees (employee_id, first_name, last_name, email, department_id,
+                        job_role, job_level, hire_date, effective_from, age, gender,
+                        marital_status, monthly_income, attrition)
+                    VALUES (:employee_id, :first_name, :last_name, :email, :department_id,
+                        :job_role, :job_level, :hire_date, :effective_from, :age, :gender,
+                        :marital_status, :monthly_income, :attrition)
+                """, emp.to_dict(), conn=conn)
         except IntegrityError:
             return False, "Could not save: that email already exists or the department is invalid."
         except Exception as err:
             return False, f"Database error: {err}"
 
-        # Silver is saved. Now copy the new employee into the warehouse (SCD2 procedure).
         try:
             self.execute_procedure(self.GOLD, "sp_scd2_update")
         except Exception as err:
@@ -76,29 +78,37 @@ class EmployeeManager(DatabaseManager):      # inherits read() / write() / SILVE
         2. Run sp_scd2_update -> Gold closes the OLD row (is_current = 0)
            and inserts a NEW row (is_current = 1).  That is SCD Type 2.
         """
+        job_role = job_role.strip()   
         try:
-            current = self.get_employee(employee_id)
-            if current is None:
-                return False, f"Employee {employee_id} not found."
+            # ONE transaction: lock the employee row, check it, update it.
+            # Two people editing the same employee can no longer overwrite each other.
+            with self.transaction(self.SILVER) as conn:
+                current = self.read_one(
+                    self.SILVER,
+                    "SELECT * FROM employees WHERE employee_id = :id FOR UPDATE",
+                    {"id": employee_id}, conn=conn)
+                if current is None:
+                    return False, f"Employee {employee_id} not found."
 
-            nothing_changed = (current["department_id"] == department_id
-                               and current["job_role"] == job_role
-                               and current["job_level"] == job_level
-                               and current["monthly_income"] == monthly_income)
-            if nothing_changed:
-                return False, "Nothing changed - no new history record needed."
-            if current["effective_from"] >= date.today():
-                return False, "This employee was already changed today. Try again tomorrow."
-            if job_level not in (1, 2, 3, 4, 5) or monthly_income <= 0:
-                return False, "Job level must be 1-5 and income must be above 0."
+                nothing_changed = (current["department_id"] == department_id
+                                   and current["job_role"] == job_role
+                                   and current["job_level"] == job_level
+                                   and current["monthly_income"] == monthly_income)
+                if nothing_changed:
+                    return False, "Nothing changed - no new history record needed."
+                if current["effective_from"] >= date.today():
+                    return False, "This employee was already changed today. Try again tomorrow."
+                if job_level not in (1, 2, 3, 4, 5) or monthly_income <= 0:
+                    return False, "Job level must be 1-5 and income must be above 0."
 
-            self.write(self.SILVER, """
-                UPDATE employees
-                SET department_id = :dept, job_role = :role, job_level = :level,
-                    monthly_income = :income, effective_from = :today
-                WHERE employee_id = :id
-            """, {"dept": department_id, "role": job_role.strip(), "level": job_level,
-                  "income": monthly_income, "today": date.today(), "id": employee_id})
+                self.write(self.SILVER, """
+                    UPDATE employees
+                    SET department_id = :dept, job_role = :role, job_level = :level,
+                        monthly_income = :income, effective_from = :today
+                    WHERE employee_id = :id
+                """, {"dept": department_id, "role": job_role, "level": job_level,
+                      "income": monthly_income, "today": date.today(), "id": employee_id},
+                    conn=conn)
         except IntegrityError:
             return False, "Invalid department selected."
         except Exception as err:

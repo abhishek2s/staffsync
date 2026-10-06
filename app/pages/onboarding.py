@@ -240,8 +240,14 @@ with tab_new:
     render_text_input(c1, "Email", "new_email")
     render_text_input(c2, "Job role", "new_job_role")
     c1, c2 = st.columns(2)
-    render_number_input(c1, "Age", "new_age", min_value=-999999, max_value=150, value=30)
-    render_number_input(c2, "Monthly income", "new_income", min_value=-999999999, value=5000, step=100)
+
+    if "new_age" not in st.session_state:
+        st.session_state.new_age = 30
+    if "new_income" not in st.session_state:
+        st.session_state.new_income = 5000
+    render_number_input(c1, "Age", "new_age", min_value=-999999, max_value=150)
+    render_number_input(c2, "Monthly income", "new_income", min_value=-99999999999, step=100)
+    
     show_invalid_field_styles()
     with st.form("new_employee_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
