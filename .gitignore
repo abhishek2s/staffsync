@@ -27,7 +27,8 @@ data/synthetic/
 .*ytest_cache/
 
 # Coverage
-.coverage*htmlcov/
+.coverage
+htmlcov/
 
 *.log
 logs/

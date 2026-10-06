@@ -74,6 +74,39 @@ class TestEmployeeValidation(unittest.TestCase):
             "Hire date cannot be in the future.",
         )
 
+    def test_employee_rejects_blank_names(self):
+        for changes in ({"first_name": " "}, {"last_name": " "}):
+            with self.subTest(changes=changes):
+                self.assertEqual(
+                    self.make_employee(**changes).validate(),
+                    "First name and last name are required.",
+                )
+
+    def test_employee_rejects_age_outside_allowed_range(self):
+        for age in (17, 71):
+            with self.subTest(age=age):
+                self.assertEqual(
+                    self.make_employee(age=age).validate(),
+                    "Age must be between 18 and 70.",
+                )
+
+    def test_employee_rejects_invalid_job_level(self):
+        self.assertEqual(
+            self.make_employee(job_level=6).validate(),
+            "Job level must be between 1 and 5.",
+        )
+
+    def test_employee_rejects_nonpositive_income(self):
+        self.assertEqual(
+            self.make_employee(monthly_income=0).validate(),
+            "Monthly income must be greater than 0.",
+        )
+
+    def test_employee_serializes_all_fields(self):
+        employee = self.make_employee()
+        self.assertEqual(employee.to_dict()["email"], "ada@example.com")
+        self.assertIsNone(employee.to_dict()["gender"])
+
 
 class TestProjectValidation(unittest.TestCase):
     def make_project(self, **changes):
@@ -142,6 +175,16 @@ class TestReviewValidation(unittest.TestCase):
             self.make_review(review_date=date.today() + timedelta(days=1)).validate(),
             "Review date cannot be in the future.",
         )
+
+    def test_review_rejects_invalid_satisfaction_rating(self):
+        self.assertEqual(
+            self.make_review(job_satisfaction=5).validate(),
+            "Satisfaction values must be 1 to 4.",
+        )
+
+    def test_review_serializes_fields(self):
+        review = self.make_review()
+        self.assertEqual(review.to_dict()["review_score"], 80)
 
 
 if __name__ == "__main__":

@@ -23,15 +23,15 @@ def run() -> None:
     logger.info("Initializing StaffSync data engineering pipeline.")
 
     try:
-        logger.info("Phase 1: Bronze staging ingestion")
-        logger.info("Step 1.1: Running Data Synthesizer to generate synthetic datasets.")
-        synthesizer = DataSynthesizer()
-        shapes = synthesizer.run()
-        logger.info("Generated synthetic datasets: %s", list(shapes.keys()))
+        # logger.info("Phase 1: Bronze staging ingestion")
+        # logger.info("Step 1.1: Running Data Synthesizer to generate synthetic datasets.")
+        # synthesizer = DataSynthesizer()
+        # shapes = synthesizer.run()
+        # logger.info("Generated synthetic datasets: %s", list(shapes.keys()))
 
-        logger.info("Step 1.2: Loading generated CSV files into the MySQL bronze schema.")
-        loader = BronzeLoader()
-        loader.run()
+        # logger.info("Step 1.2: Loading generated CSV files into the MySQL bronze schema.")
+        # loader = BronzeLoader()
+        # loader.run()
 
         logger.info("Phase 2: Silver 3NF OLTP transformation")
         db_mgr = DatabaseManager()
