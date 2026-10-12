@@ -12,7 +12,7 @@ from src.utils.ui_helpers import get_data, setup_page
 # Setup page
 setup_page("Home")
 
-# --- CSS for Premium Dark Mode Cards ---
+#  CSS for Premium Dark Mode Cards 
 st.markdown("""
 <style>
 /* Style the metrics to look like elevated background cards */
@@ -42,7 +42,7 @@ kpis = get_data("get_kpis")
 if kpis is None:
     st.stop() 
 
-# --- KEY NUMBERS SECTION ---
+#  KEY NUMBERS SECTION 
 st.subheader("Key numbers")
 
 row1 = st.columns(4)
@@ -63,7 +63,7 @@ st.write("")
 st.divider()
 st.write("")
 
-# --- NAVIGATION OVERVIEW SECTION ---
+#  NAVIGATION OVERVIEW SECTION 
 left, right = st.columns(2, gap="large")
 
 with left:

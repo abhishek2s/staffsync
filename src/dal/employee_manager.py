@@ -14,7 +14,7 @@ from src.models.employee import Employee
 
 class EmployeeManager(DatabaseManager):
 
-    # ---------- READ ----------
+    #  READ 
     def get_departments(self):
         return self.read(self.SILVER,
                          "SELECT department_id, department_name FROM departments ORDER BY department_name")
@@ -39,7 +39,7 @@ class EmployeeManager(DatabaseManager):
         return self.read_one(self.SILVER,
                              "SELECT * FROM employees WHERE employee_id = :id", {"id": employee_id})
 
-    # ---------- CREATE ----------
+    #  CREATE 
     def add_employee(self, emp: Employee):
         error = emp.validate()
         if error:
@@ -70,7 +70,7 @@ class EmployeeManager(DatabaseManager):
             return True, f"Employee {emp.employee_id} saved, but the warehouse update failed: {err}"
         return True, f"Employee {emp.employee_id} ({emp.full_name}) added."
 
-    # ---------- UPDATE (this is the SCD Type 2 trigger) ----------
+    #  UPDATE (this is the SCD Type 2 trigger) 
     def update_employee(self, employee_id, department_id, job_role, job_level, monthly_income):
         """
         Change department / role / level / salary.
@@ -120,7 +120,7 @@ class EmployeeManager(DatabaseManager):
             return True, f"Saved, but the warehouse update failed: {err}"
         return True, "Employee updated and a new history record was created in the warehouse."
 
-    # ---------- DELETE ----------
+    #  DELETE 
     def delete_employee(self, employee_id):
         try:
             rows = self.write(self.SILVER, "DELETE FROM employees WHERE employee_id = :id", {"id": employee_id})
