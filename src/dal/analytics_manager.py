@@ -8,7 +8,7 @@ from src.db_manager import DatabaseManager
 
 class AnalyticsManager(DatabaseManager):
 
-    # ============ KPI CARDS ============
+    # KPI CARDS
     def get_kpis(self):
         """Headline numbers. In Streamlit:  st.metric("Employees", kpis["total_employees"])"""
         emp = self.read_one(self.GOLD, """
@@ -42,7 +42,7 @@ class AnalyticsManager(DatabaseManager):
             "overallocated_employees": int(over["total"]),
         }
 
-    # ============ DROPDOWN HELPERS ============
+    #   DROPDOWN HELPERS  
     def get_years(self):
         df = self.read(self.GOLD, "SELECT DISTINCT year_number FROM dim_date ORDER BY year_number DESC")
         return df["year_number"].tolist()
@@ -51,7 +51,7 @@ class AnalyticsManager(DatabaseManager):
         df = self.read(self.GOLD, "SELECT department_name FROM dim_department ORDER BY department_name")
         return df["department_name"].tolist()
 
-    # ============ YEAR-OVER-YEAR (uses LAG in the view) ============
+    #   YEAR-OVER-YEAR (uses LAG in the view)  
     def yoy_performance(self, department=None):
         """Score per year per department. Column score_change_from_prior_year = the YoY change."""
         return self.read(self.GOLD, """
@@ -69,7 +69,7 @@ class AnalyticsManager(DatabaseManager):
             GROUP BY d.year_number ORDER BY d.year_number
         """)
 
-    # ============ TOP EMPLOYEES (uses DENSE_RANK in the view) ============
+    #   TOP EMPLOYEES (uses DENSE_RANK in the view)  
     def top_employees(self, year=None, department=None, top_n=10):
         """The view already keeps only the top 10, so top_n can be 1 to 10."""
         return self.read(self.GOLD, """
@@ -82,7 +82,7 @@ class AnalyticsManager(DatabaseManager):
             ORDER BY review_year DESC, department_name, department_rank
         """, {"n": int(top_n), "yr": year, "dept": department})
 
-    # ============ ATTRITION ============
+    #   ATTRITION  
     def attrition_by_department(self):
         return self.read(self.GOLD, """
             SELECT department_name,
@@ -119,7 +119,7 @@ class AnalyticsManager(DatabaseManager):
             LIMIT :n
         """, {"n": int(top_n)})
 
-    # ============ PROJECT BOTTLENECKS ============
+    #   PROJECT BOTTLENECKS  
     def project_bottlenecks(self):
         """
         Reads vw_project_bottleneck and adds a 'flag' column:
@@ -148,7 +148,7 @@ class AnalyticsManager(DatabaseManager):
             FROM dim_project GROUP BY status ORDER BY projects DESC
         """)
 
-    # ============ SCD TYPE 2 HISTORY ============
+    #   SCD TYPE 2 HISTORY  
     def employee_history(self, employee_id):
         """Every version of one employee: old rows have is_current = 0."""
         return self.read(self.GOLD, """
@@ -159,7 +159,7 @@ class AnalyticsManager(DatabaseManager):
             ORDER BY e.start_date
         """, {"id": employee_id})
 
-    # ============ REFRESH BUTTON ============
+    #   REFRESH BUTTON  
     def refresh_warehouse(self):
         """Re-run the full Silver -> Gold load (picks up new projects and reviews). Takes a while."""
         try:
