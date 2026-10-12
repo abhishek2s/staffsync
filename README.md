@@ -90,8 +90,35 @@ This executes the full workflow:
 Start the Streamlit app from the app directory:
 
 ```bash
-streamlit run app/Main.py
+streamlit run app/main.py
 ```
+
+The app limits native numerical-library threads to reduce memory pressure
+when Streamlit loads multiple pages and Pandas/NumPy initializes.
+
+## Dashboard authentication and roles
+
+The dashboard requires a login. Users are stored in the Silver database
+schema. Passwords are stored as salted PBKDF2-HMAC-SHA256 hashes; plaintext
+passwords are never written to the database or source code.
+
+Admin users can use Home, Data Entry, Analytics, and Directory. Viewer users
+can use Home, Analytics, and Directory in read-only mode; Data Entry and the
+warehouse refresh action are blocked.
+
+Run the Silver schema script once, then create as many Admin or Viewer users
+as needed:
+
+```bash
+python scripts/create_user.py alice Admin
+python scripts/create_user.py analyst Viewer
+```
+
+The command prompts for each password without displaying or storing it.
+Database credentials should be kept in `.env` locally or in your deployment
+secret manager; never commit them to Git. This is a basic session-based login
+intended for local/internal use; production deployments should place
+authentication behind an identity provider.
 
 ## Environment Variables
 

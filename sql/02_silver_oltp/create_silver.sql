@@ -12,6 +12,19 @@ DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS employees;
 DROP TABLE IF EXISTS departments;
 
+-- 1. Application users (passwords are salted PBKDF2 hashes)
+CREATE TABLE users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(100) NOT NULL UNIQUE,
+    password_hash CHAR(128) NOT NULL,
+    password_salt CHAR(32) NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT chk_users_role CHECK (role IN ('Admin', 'Viewer'))
+);
+
 CREATE TABLE departments (
     department_id INT AUTO_INCREMENT PRIMARY KEY,
     department_name VARCHAR(100) NOT NULL UNIQUE,
