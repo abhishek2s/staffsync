@@ -1,14 +1,12 @@
 from __future__ import annotations
 
-import os
 from pathlib import Path
-from urllib.parse import quote_plus
-
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from config.settings import settings
+from src.db_manager import DatabaseManager
 from src.utils.logger import setup_logger
 
 logger = setup_logger("BronzeLoader")
@@ -24,42 +22,32 @@ DATE_COLUMNS = {
 
 class BronzeLoader:
     def __init__(self) -> None:
-        self.host = settings.DB.HOST
-        self.port = settings.DB.PORT
-        self.user = settings.DB.USER
-        self.password = settings.DB.PASSWORD
+        self.db = DatabaseManager()
         self.schema = settings.DB.BRONZE_SCHEMA
         self.data_dir = settings.PATHS.DATA_DIR
 
-    def _engine(self):
-        url = (
-            f"mysql+pymysql://{quote_plus(self.user)}:{quote_plus(self.password)}"
-            f"@{self.host}:{self.port}/{self.schema}"
-        )
-        return create_engine(url, pool_pre_ping=True)
-
-    def truncate_table(self, engine, table: str) -> None:
+    def truncate_table(self, conn, table: str) -> None:
         """Truncates the target table to wipe existing data before loading new records."""
         logger.info(f"Clearing existing rows in `{self.schema}.{table}`...")
-        with engine.begin() as conn:
-            conn.execute(text(f"TRUNCATE TABLE `{table}`;"))
+        conn.execute(text(f"TRUNCATE TABLE `{table}`;"))
 
-    def load_table(self, engine, table: str) -> int:
+    def load_table(self, conn, table: str) -> int:
         path = self.data_dir / f"{table}.csv"
         if not path.exists():
             logger.error(f"Cannot find CSV at {path}")
             raise FileNotFoundError(f"{path} not found.")
 
-        # Wipe old data before inserting fresh records
-        self.truncate_table(engine, table)
+        # Wipe old data before inserting fresh records using the shared transaction connection
+        self.truncate_table(conn, table)
 
         logger.info(f"Ingesting {path} into `{self.schema}.{table}`...")
         total = 0
         try:
-            for chunk in pd.read_csv(path, parse_dates=DATE_COLUMNS[table], chunksize=20_000):
+            for chunk in pd.read_csv(path, parse_dates=DATE_COLUMNS.get(table, []), chunksize=20_000):
                 chunk.to_sql(
-                    table,
-                    engine,
+                    name=table,
+                    con=conn,
+                    schema=self.schema,
                     if_exists="append",
                     index=False,
                     method="multi",
@@ -73,13 +61,12 @@ class BronzeLoader:
             raise
 
     def run(self) -> None:
-        engine = self._engine()
-
-        # --- ADDED FOR AIVEN COMPATIBILITY ---
-        logger.info("Disabling sql_require_primary_key for Aiven session...")
-        with engine.begin() as conn:
-            conn.execute(text("SET SESSION sql_require_primary_key = 0;"))
-
-        for table in DATE_COLUMNS:
-            self.load_table(engine, table)
-        logger.info("All 5 staging tables loaded fresh into MySQL Bronze Database.")
+        logger.info(f"Starting Bronze bulk ingestion for schema `{self.schema}`...")
+        
+        # Borrow a single write transaction connection from DatabaseManager
+        with self.db.transaction(self.schema) as conn:
+            # SET SESSION sql_require_primary_key = 0;
+            for table in DATE_COLUMNS:
+                self.load_table(conn, table)
+                
+        logger.info("All staging tables loaded fresh into Bronze Database under a unified transaction.")
