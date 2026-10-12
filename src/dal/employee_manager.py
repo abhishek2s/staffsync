@@ -70,13 +70,13 @@ class EmployeeManager(DatabaseManager):
             return True, f"Employee {emp.employee_id} saved, but the warehouse update failed: {err}"
         return True, f"Employee {emp.employee_id} ({emp.full_name}) added."
 
-    #  UPDATE (this is the SCD Type 2 trigger) 
-    def update_employee(self, employee_id, department_id, job_role, job_level, monthly_income):
+    # UPDATE (this is the SCD Type 2 trigger)
+    def update_employee(self, employee_id, department_id, job_role, job_level, monthly_income, attrition="No"):
         """
-        Change department / role / level / salary.
+        Change department / role / level / salary / attrition status.
         1. Save the new values in Silver and set effective_from = today
         2. Run sp_scd2_update -> Gold closes the OLD row (is_current = 0)
-           and inserts a NEW row (is_current = 1).  That is SCD Type 2.
+           and inserts a NEW row (is_current = 1). That is SCD Type 2.
         """
         job_role = job_role.strip()   
         try:
@@ -93,21 +93,24 @@ class EmployeeManager(DatabaseManager):
                 nothing_changed = (current["department_id"] == department_id
                                    and current["job_role"] == job_role
                                    and current["job_level"] == job_level
-                                   and current["monthly_income"] == monthly_income)
+                                   and current["monthly_income"] == monthly_income
+                                   and current.get("attrition") == attrition)
                 if nothing_changed:
                     return False, "Nothing changed - no new history record needed."
                 if current["effective_from"] >= date.today():
                     return False, "This employee was already changed today. Try again tomorrow."
                 if job_level not in (1, 2, 3, 4, 5) or monthly_income <= 0:
                     return False, "Job level must be 1-5 and income must be above 0."
+                if attrition not in ("Yes", "No"):
+                    return False, "Attrition status must be 'Yes' or 'No'."
 
                 self.write(self.SILVER, """
                     UPDATE employees
                     SET department_id = :dept, job_role = :role, job_level = :level,
-                        monthly_income = :income, effective_from = :today
+                        monthly_income = :income, attrition = :attr, effective_from = :today
                     WHERE employee_id = :id
                 """, {"dept": department_id, "role": job_role, "level": job_level,
-                      "income": monthly_income, "today": date.today(), "id": employee_id},
+                      "income": monthly_income, "attr": attrition, "today": date.today(), "id": employee_id},
                     conn=conn)
         except IntegrityError:
             return False, "Invalid department selected."
