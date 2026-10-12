@@ -1,18 +1,21 @@
 import sys
 import re
 from pathlib import Path
-import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.utils.runtime import configure_numeric_threads
+configure_numeric_threads()
+
+import pandas as pd
 import streamlit as st
 from src.utils.ui_helpers import setup_page
 from src.dal.employee_manager import EmployeeManager
 from src.dal.analytics_manager import AnalyticsManager
 
-setup_page("Directory")
+setup_page("Directory", {"Admin", "Viewer"})
 
 st.title("Staff Directory & Profile")
 st.write("Search the active roster and view complete SCD Type 2 career histories.")

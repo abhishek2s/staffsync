@@ -1,10 +1,20 @@
 import streamlit as st
 from src.dal.analytics_manager import AnalyticsManager
 from src.dal.employee_manager import EmployeeManager
+from src.utils.auth import (
+    current_username,
+    log_out,
+    require_role,
+)
 
-def setup_page(title):
+
+def setup_page(title, allowed_roles=None):
     st.set_page_config(page_title=f"StaffSync | {title}", layout="wide")
-    
+
+    if allowed_roles is None:
+        allowed_roles = {"Admin", "Viewer"}
+    role = require_role(allowed_roles)
+
     with st.sidebar:
         # Cyan typographic logo to match the dark theme
         st.markdown(
@@ -19,6 +29,12 @@ def setup_page(title):
         
         # Cyan section headers
         st.markdown("<p style='font-size: 11px; font-weight: 700; color: #10b981; letter-spacing: 1px; margin-bottom: 8px; text-transform: uppercase;'>WORKSPACE</p>", unsafe_allow_html=True)
+        st.caption(f"Signed in as {current_username()} ({role})")
+
+        if st.button("Logout"):
+            log_out()
+            st.rerun()
+
         st.caption("Use the pages above to explore workforce insights or manage employee, project, and review data.")
         
         st.divider()
@@ -28,8 +44,8 @@ def setup_page(title):
         
         st.write("") 
         
-        # The 'primary' type automatically pulls the coral-red from Streamlit's default dark theme
-        if st.button("Refresh Data", type="primary", width="stretch"):
+        # Rebuilding the warehouse changes application state, so it is Admin-only.
+        if role == "Admin" and st.button("Refresh Data", type="primary", width="stretch"):
             with st.spinner("Rebuilding the warehouse..."):
                 ok, message = AnalyticsManager().refresh_warehouse()
                 show_result(ok, message)

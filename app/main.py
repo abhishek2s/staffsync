@@ -7,10 +7,13 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
+from src.utils.runtime import configure_numeric_threads
 from src.utils.ui_helpers import get_data, setup_page
 
+configure_numeric_threads()
+
 # Setup page
-setup_page("Home")
+setup_page("Home", {"Admin", "Viewer"})
 
 #  CSS for Premium Dark Mode Cards 
 st.markdown("""

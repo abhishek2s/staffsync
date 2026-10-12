@@ -5,13 +5,16 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from src.utils.runtime import configure_numeric_threads
+configure_numeric_threads()
+
 from datetime import date
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 from src.utils.ui_helpers import get_data, setup_page
 
-setup_page("Analytics")
+setup_page("Analytics", {"Admin", "Viewer"})
 st.title("Analytics Dashboard")
 
 kpis = get_data("get_kpis")

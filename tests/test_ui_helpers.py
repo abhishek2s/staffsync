@@ -14,12 +14,15 @@ class TestUiHelpers(unittest.TestCase):
             patch.object(ui_helpers.st, "caption"),
             patch.object(ui_helpers.st, "divider"),
             patch.object(ui_helpers.st, "write"),
-            patch.object(ui_helpers.st, "button", return_value=False) as button,
+            patch.object(ui_helpers.st, "button", side_effect=[False, False]) as button,
+            patch.object(ui_helpers, "require_role", return_value="Admin"),
         ):
             ui_helpers.setup_page("People")
 
         set_page_config.assert_called_once_with(page_title="StaffSync | People", layout="wide")
-        button.assert_called_once_with("Refresh Data", type="primary", width="stretch")
+        self.assertEqual(button.call_count, 2)
+        self.assertEqual(button.call_args_list[0].args, ("Logout",))
+        self.assertEqual(button.call_args_list[1].args, ("Refresh Data",))
 
     def test_setup_page_refreshes_and_displays_result_when_clicked(self):
         with (
@@ -29,16 +32,36 @@ class TestUiHelpers(unittest.TestCase):
             patch.object(ui_helpers.st, "caption"),
             patch.object(ui_helpers.st, "divider"),
             patch.object(ui_helpers.st, "write"),
-            patch.object(ui_helpers.st, "button", return_value=True),
+            patch.object(ui_helpers.st, "button", side_effect=[False, True]),
             patch.object(ui_helpers.st, "spinner", return_value=nullcontext()),
             patch.object(ui_helpers, "AnalyticsManager") as analytics,
             patch.object(ui_helpers, "show_result") as show_result,
+            patch.object(ui_helpers, "require_role", return_value="Admin"),
         ):
             analytics.return_value.refresh_warehouse.return_value = (True, "done")
             ui_helpers.setup_page("People")
 
         analytics.return_value.refresh_warehouse.assert_called_once_with()
         show_result.assert_called_once_with(True, "done")
+
+    def test_setup_page_logs_out_and_reruns_when_logout_is_clicked(self):
+        with (
+            patch.object(ui_helpers.st, "set_page_config"),
+            patch.object(ui_helpers.st, "sidebar", nullcontext()),
+            patch.object(ui_helpers.st, "markdown"),
+            patch.object(ui_helpers.st, "caption"),
+            patch.object(ui_helpers.st, "divider"),
+            patch.object(ui_helpers.st, "write"),
+            patch.object(ui_helpers.st, "button", return_value=True) as button,
+            patch.object(ui_helpers, "require_role", return_value="Viewer"),
+            patch.object(ui_helpers, "log_out") as log_out,
+            patch.object(ui_helpers.st, "rerun") as rerun,
+        ):
+            ui_helpers.setup_page("People")
+
+        button.assert_called_once_with("Logout")
+        log_out.assert_called_once_with()
+        rerun.assert_called_once_with()
 
     def test_show_result_success_clears_cache_and_failure_displays_error(self):
         with (

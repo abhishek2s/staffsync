@@ -7,6 +7,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from datetime import date, timedelta
 import streamlit as st
+from src.utils.runtime import configure_numeric_threads
 from src.dal.analytics_manager import AnalyticsManager
 from src.dal.employee_manager import EmployeeManager
 from src.dal.project_manager import ProjectManager
@@ -16,7 +17,9 @@ from src.models.project import Project
 from src.models.review import Review
 from src.utils.ui_helpers import load_departments, setup_page, show_result
 
-setup_page("Data Entry")
+configure_numeric_threads()
+
+setup_page("Data Entry", {"Admin"})
 st.title("Data Entry")
 
 employees = EmployeeManager()
@@ -35,6 +38,10 @@ tab_new, tab_update, tab_project, tab_assign, tab_review = st.tabs([
 # TAB 1: ONBOARD EMPLOYEE
 with tab_new:
     st.subheader("Onboard a new employee")
+
+    if not dept_ids:
+        st.error("No departments are available. Create a department before adding an employee.")
+        st.stop()
     
     with st.form("new_employee_form", clear_on_submit=True):
         c1, c2 = st.columns(2)
@@ -46,7 +53,11 @@ with tab_new:
         age = c1.number_input("Age", min_value=18, max_value=70, value=30, step=1)
         monthly_income = c2.number_input("Monthly income", min_value=1, value=5000, step=100)
         
-        dept_id = c1.selectbox("Department", dept_ids, format_func=lambda i: dept_names[i]) if dept_ids else c1.text_input("Department ID")
+        dept_id = c1.selectbox(
+            "Department",
+            dept_ids,
+            format_func=lambda i: dept_names[i],
+        )
         job_level = c2.selectbox("Job level", [1, 2, 3, 4, 5])
         gender = c1.selectbox("Gender", ["Male", "Female", "Other"])
         marital = c2.selectbox("Marital status", ["Single", "Married", "Divorced"])
