@@ -72,6 +72,49 @@ class ProjectManager(DatabaseManager):
         except Exception as err:
             return False, f"Database error: {err}"
 
+    def update_project_status(self, project_id: int, status: str):
+        """
+        Updates an existing project's status in Silver and syncs Gold.
+        """
+        status = status.strip()
+        allowed_statuses = ["Planned", "Active", "Completed", "On Hold"]
+        if status not in allowed_statuses:
+            return False, f"Status must be one of {allowed_statuses}."
+
+        try:
+            with self.transaction(self.SILVER) as conn:
+                # 1. Lock row and verify existence
+                current = self.read_one(
+                    self.SILVER,
+                    "SELECT project_id, project_name, status FROM projects WHERE project_id = :id FOR UPDATE",
+                    {"id": project_id},
+                    conn=conn
+                )
+                if not current:
+                    return False, f"Project ID {project_id} not found."
+
+                if current["status"] == status:
+                    return False, f"Project is already in '{status}' status."
+
+                # 2. Update status in Silver
+                self.write(
+                    self.SILVER,
+                    "UPDATE projects SET status = :status WHERE project_id = :id",
+                    {"status": status, "id": project_id},
+                    conn=conn
+                )
+
+        except Exception as err:
+            return False, f"Database error during project status update: {err}"
+
+        # 3. Synchronize Gold warehouse (ON DUPLICATE KEY UPDATE in dim_project)
+        try:
+            self.execute_procedure(self.GOLD, "sp_populate_olap")
+        except Exception as err:
+            return True, f"Project status updated in Silver, but warehouse sync failed: {err}"
+
+        return True, f"Project {project_id} ('{current['project_name']}') status updated to '{status}'."
+
     def assign_employee(self, employee_id, project_id, role_on_project, allocation_pct):
         """Put an employee on a project. Total allocation for one person may not exceed 100%."""
         if not role_on_project.strip():
