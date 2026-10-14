@@ -106,8 +106,14 @@ Admin users can use Home, Data Entry, Analytics, and Directory. Viewer users
 can use Home, Analytics, and Directory in read-only mode; Data Entry and the
 warehouse refresh action are blocked.
 
-Run the Silver schema script once, then create as many Admin or Viewer users
-as needed:
+Users can create an account from the sign-in page using the work email on
+their employee record. The app assigns Admin to Human Resources employees and
+Viewer to Sales and Research & Development employees, based on the current
+department each time they sign in. Accounts cannot be created for emails that
+are not present in the Silver employee tables.
+
+Run the Silver schema script once. Admin or Viewer accounts can also be
+provisioned manually:
 
 ```bash
 python scripts/create_user.py alice Admin
@@ -123,6 +129,10 @@ authentication behind an identity provider.
 ## Environment Variables
 
 The project reads configuration from `.env` files in the root and config directories. Typical values include MySQL host, port, credentials, and schema names.
+
+Signup checks that the supplied email matches an employee record, but does not
+verify control of that email address. Keep the app on a trusted internal
+network or use a verified identity provider before exposing it publicly.
 
 ## Notes
 
